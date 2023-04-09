@@ -8,7 +8,7 @@
 
 #define SCALE_FACTOR 10
 
-#define IPF 20
+#define IPF 10
 
 unsigned short opcode;
 unsigned char memory[4096];
@@ -455,11 +455,10 @@ int main(int argc, char** argv)
 
     while(running)
     {
-        int current_frame_time = SDL_GetPerformanceCounter();
-        int delta_time = current_frame_time - prev_frame_time;
+        int64_t current_frame_time = SDL_GetPerformanceCounter();
+        int64_t delta_time = current_frame_time - prev_frame_time;
         prev_frame_time = current_frame_time;
-        accumulator += delta_time;
-        
+        accumulator += delta_time;    
 
         while(accumulator >= desired_frametime)
         {
@@ -538,6 +537,6 @@ int main(int argc, char** argv)
     SDL_FreeSurface(surface);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    
+
     return 0;
 }
