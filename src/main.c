@@ -8,6 +8,8 @@
 
 #define SCALE_FACTOR 10
 
+#define IPF 20
+
 unsigned short opcode;
 unsigned char memory[4096];
 unsigned char V[16];
@@ -48,27 +50,16 @@ void initialize_chip8()
     I = 0;
     sp = 0;
 
-    for(int i = 0; i < 64*32; i++)
-    {
-        gfx[i] = 0;
-    }
-
-    for(int i = 0; i < 16; i++)
-    {
-        V[i] = 0;
-        stack[i] = 0;
-        keys[i] = 0;
-    }
-
-    for(int i = 0; i < 4096; i++)
-    {
-        memory[i] = 0;
-    }
+    memset(gfx, 0, sizeof(gfx));
+    memset(V, 0, sizeof(V));
+    memset(stack, 0, sizeof(stack));
+    memset(keys, 0, sizeof(keys));
+    memset(memory, 0, sizeof(memory));
 
     for(int i = 0; i < 80; i++)
     {
         memory[i] = fontset[i];
-    }
+    }   
 
     sound_timer = 0;
     delay_timer = 0;
@@ -137,8 +128,7 @@ void emulate_cycle()
         break;
     
     case 0x2000:
-        sp++;
-        stack[sp] = pc;
+        stack[++sp] = pc;
         pc = NNN;
         break;
     
@@ -195,29 +185,13 @@ void emulate_cycle()
                 break;
             
             case 0x0004:
-                if(V[Y] > 0xFF - V[X])
-                {
-                    flag = 1;
-                }
-                else
-                {
-                    flag = 0;
-                }
-
+                flag = V[Y] > 0xFF - V[X];
                 V[X] = V[X] + V[Y];
                 V[0xF] = flag;
                 break;
             
             case 0x0005:
-                if(V[X] > V[Y])
-                {
-                    flag = 1;
-                }
-                else
-                {
-                    flag = 0;
-                }
-
+                flag = V[X] > V[Y];
                 V[X] = V[X] - V[Y];
                 V[0xF] = flag;
                 break;
@@ -230,15 +204,7 @@ void emulate_cycle()
                 break;
             
             case 0x0007:
-                if(V[Y] > V[X])
-                {
-                    flag = 1;
-                }
-                else
-                {
-                    flag = 0;
-                }
-
+                flag = V[Y] > V[X];
                 V[X] = V[Y] - V[X];
                 V[0xF] = flag;
                 break;
@@ -482,11 +448,12 @@ int main(int argc, char** argv)
     initialize_chip8();
     load_game(argv[1]);
 
-    int desired_frametime = SDL_GetPerformanceFrequency()/500;
-    int prev_frame_time = SDL_GetPerformanceCounter();
-    int accumulator = 0;
+    int64_t desired_frametime = SDL_GetPerformanceFrequency()/ (double) 60;
+    int64_t prev_frame_time = SDL_GetPerformanceCounter();
+    int64_t accumulator = 0;
+    int running = 1;
 
-    while(1)
+    while(running)
     {
         int current_frame_time = SDL_GetPerformanceCounter();
         int delta_time = current_frame_time - prev_frame_time;
@@ -496,7 +463,10 @@ int main(int argc, char** argv)
 
         while(accumulator >= desired_frametime)
         {
-            emulate_cycle();
+            for(int i = 0; i<IPF; i++)
+            {
+                emulate_cycle();
+            }
 
             if(drawflag)
             {
@@ -556,6 +526,9 @@ int main(int argc, char** argv)
                             keys[hexkey] = 1;
                         }
                         break;
+                    
+                    case SDL_QUIT:
+                        running = 0;
                 }
             }
             accumulator -= desired_frametime;
@@ -565,6 +538,6 @@ int main(int argc, char** argv)
     SDL_FreeSurface(surface);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
+    
     return 0;
 }
