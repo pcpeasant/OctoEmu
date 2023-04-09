@@ -1,5 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <SDL2/SDL.h>
+#include <stdbool.h>
+
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 32
 
 unsigned short opcode;
 unsigned char memory[4096];
@@ -265,8 +270,8 @@ void emulate_cycle()
         break;
     
     case 0xD000:
-        unsigned short xcoord = V[X] % 64;
-        unsigned short ycoord = V[Y] % 32;
+        unsigned short xcoord = V[X] % SCREEN_WIDTH;
+        unsigned short ycoord = V[Y] % SCREEN_HEIGHT;
         V[0xF] = 0;
         unsigned short pixel;
 
@@ -279,18 +284,18 @@ void emulate_cycle()
                 int xpos = xcoord + xline;
                 int ypos = (ycoord + yline);
 
-                if((xpos > 63) || (ypos > 31))
+                if((xpos >= SCREEN_WIDTH) || (ypos >= SCREEN_HEIGHT))
                 {
                     break;
                 }
 
                 if((pixel & (0x80 >> xline)) != 0)
                 {
-                    if(gfx[xpos + ypos*64] == 1)
+                    if(gfx[xpos + ypos*SCREEN_WIDTH] == 1)
                     {
                         V[0xF] = 1;
                     }
-                    gfx[xpos + ypos*64] ^= 1;
+                    gfx[xpos + ypos*SCREEN_WIDTH] ^= 1;
                 }
             }
         }
@@ -384,23 +389,32 @@ void emulate_cycle()
         printf("Unknown opcode: %x\n", opcode);
         break;
     }
-
-    if(delay_timer > 0)
-    {
-        delay_timer--;
-    }
-
-    if(sound_timer > 0)
-    {
-        printf("BEEP!\n");
-        sound_timer--;
-    }
 }
 
 int main(int argc, char** argv)
 {
+    SDL_Window* window = NULL;
+    SDL_Surface* screenSurface = NULL;
+
+    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+    }
+    else
+    {
+        window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        if(window == NULL)
+        {
+            printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        }
+        else
+        {
+            screenSurface = SDL_GetWindowSurface(window);
+            SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
+        }
+    }
+    Uint32* pixels = (Uint32*) screenSurface -> pixels;
     initialize();
-    memory[0x1FF] = 1;
     load_game(argv[1]);
 
     while(1)
@@ -409,15 +423,31 @@ int main(int argc, char** argv)
 
         if(drawflag)
         {
-            for(int i = 0; i < 32; i++)
-            {   
-                for(int j = 0; j < 64; j++)
+            for(int y = 0; y < SCREEN_HEIGHT; y++)
+            {
+                for(int x = 0; x < SCREEN_WIDTH; x++)
                 {
-                    printf("%s", gfx[i*64 + j] ? "\u2588\u2588" : "  ");
+                    if(gfx[y*SCREEN_WIDTH + x] == 1)
+                    {
+                        pixels[(y*screenSurface->w) + x] = 0xFFFFFF;
+                    }
                 }
-                printf("\n");
             }
+            SDL_UpdateWindowSurface(window);
             drawflag = 0;            
         }
+
+        if(delay_timer > 0)
+        {
+            delay_timer--;
+        }
+
+        if(sound_timer > 0)
+        {
+            printf("BEEP!\n");
+            sound_timer--;
+        }
     }
+
+    return 0;
 }
