@@ -482,69 +482,83 @@ int main(int argc, char** argv)
     initialize_chip8();
     load_game(argv[1]);
 
+    int desired_frametime = SDL_GetPerformanceFrequency()/500;
+    int prev_frame_time = SDL_GetPerformanceCounter();
+    int accumulator = 0;
+
     while(1)
     {
-        emulate_cycle();
+        int current_frame_time = SDL_GetPerformanceCounter();
+        int delta_time = current_frame_time - prev_frame_time;
+        prev_frame_time = current_frame_time;
+        accumulator += delta_time;
+        
 
-        if(drawflag)
+        while(accumulator >= desired_frametime)
         {
-            for(int y = 0; y < SCREEN_HEIGHT; y++)
+            emulate_cycle();
+
+            if(drawflag)
             {
-                for(int x = 0; x < SCREEN_WIDTH; x++)
+                for(int y = 0; y < SCREEN_HEIGHT; y++)
                 {
-                    for(int i = 0; i < SCALE_FACTOR; i++)
+                    for(int x = 0; x < SCREEN_WIDTH; x++)
                     {
-                        for(int j = 0; j < SCALE_FACTOR; j++)
+                        for(int i = 0; i < SCALE_FACTOR; i++)
                         {
-                            if(gfx[y*SCREEN_WIDTH + x] == 1)
+                            for(int j = 0; j < SCALE_FACTOR; j++)
                             {
-                                pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
-                            }
-                            else
-                            {
-                                pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
+                                if(gfx[y*SCREEN_WIDTH + x] == 1)
+                                {
+                                    pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
+                                }
+                                else
+                                {
+                                    pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
+                                }
                             }
                         }
                     }
                 }
+
+                SDL_UpdateWindowSurface(window);
+                drawflag = 0;            
             }
 
-            SDL_UpdateWindowSurface(window);
-            drawflag = 0;            
-        }
-
-        if(delay_timer > 0)
-        {
-            delay_timer--;
-        }
-
-        if(sound_timer > 0)
-        {
-            printf("BEEP!\n");
-            sound_timer--;
-        }
-
-        while(SDL_PollEvent(&event))
-        {
-            unsigned char hexkey;
-            switch(event.type)
+            if(delay_timer > 0)
             {
-                case SDL_KEYUP:
-                    hexkey = keycode_to_hex(event.key.keysym.sym);
-                    if(hexkey != 0x42)
-                    {
-                        keys[hexkey] = 0;
-                    }
-                    break;
-                
-                case SDL_KEYDOWN:
-                    hexkey = keycode_to_hex(event.key.keysym.sym);
-                    if(hexkey != 0x42)
-                    {
-                        keys[hexkey] = 1;
-                    }
-                    break;
+                delay_timer--;
             }
+
+            if(sound_timer > 0)
+            {
+                printf("BEEP!\n");
+                sound_timer--;
+            }
+
+            while(SDL_PollEvent(&event))
+            {
+                unsigned char hexkey;
+                switch(event.type)
+                {
+                    case SDL_KEYUP:
+                        hexkey = keycode_to_hex(event.key.keysym.sym);
+                        if(hexkey != 0x42)
+                        {
+                            keys[hexkey] = 0;
+                        }
+                        break;
+                    
+                    case SDL_KEYDOWN:
+                        hexkey = keycode_to_hex(event.key.keysym.sym);
+                        if(hexkey != 0x42)
+                        {
+                            keys[hexkey] = 1;
+                        }
+                        break;
+                }
+            }
+            accumulator -= desired_frametime;
         }
     }
 
