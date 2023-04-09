@@ -18,7 +18,7 @@ unsigned char sound_timer;
 unsigned char delay_timer;
 unsigned short stack[16];
 unsigned short sp;
-unsigned char key[16];
+unsigned char keys[16];
 unsigned int drawflag = 0;
 
 unsigned char fontset[80] =
@@ -57,7 +57,7 @@ void initialize_chip8()
     {
         V[i] = 0;
         stack[i] = 0;
-        key[i] = 0;
+        keys[i] = 0;
     }
 
     for(int i = 0; i < 4096; i++)
@@ -309,7 +309,7 @@ void emulate_cycle()
         switch (opcode & 0x00F0)
         {
         case 0x0090:
-            if(key[V[X]] != 0)
+            if(keys[V[X]] != 0)
             {
                 pc += 2;
             }
@@ -317,7 +317,7 @@ void emulate_cycle()
         
 
         case 0x00A0:
-            if(key[V[X]] == 0)
+            if(keys[V[X]] == 0)
             {
                 pc += 2;
             }
@@ -336,10 +336,11 @@ void emulate_cycle()
 
             for(int i = 0; i < 16; i++)
             {
-                if(key[i] != 0)
+                if(keys[i] != 0)
                 {
                     V[X] = i;
                     keypressed = 1;
+                    break;
                 }
             }
 
@@ -393,12 +394,70 @@ void emulate_cycle()
     }
 }
 
+unsigned char keycode_to_hex(SDL_Keycode key)
+{
+    switch (key)
+    {
+    case SDLK_1:
+        return 0x01;
+        break;
+    case SDLK_2:
+        return 0x02;
+        break;
+    case SDLK_3:
+        return 0x03;
+        break;
+    case SDLK_4:
+        return 0x0C;
+        break;
+    case SDLK_q:
+        return 0x04;
+        break;
+    case SDLK_w:
+        return 0x05;
+        break;
+    case SDLK_e:
+        return 0x06;
+        break;
+    case SDLK_r:
+        return 0x0D;
+        break;
+    case SDLK_a:
+        return 0x07;
+        break;
+    case SDLK_s:
+        return 0x08;
+        break;
+    case SDLK_d:
+        return 0x09;
+        break;
+    case SDLK_f:
+        return 0x0E;
+        break;
+    case SDLK_z:
+        return 0x0A;
+        break;
+    case SDLK_x:
+        return 0x00;
+        break;
+    case SDLK_c:
+        return 0x0B;
+        break;
+    case SDLK_v:
+        return 0x0F;
+        break;
+    default:
+        return 0x42;
+        break;
+    }
+}
+
 int main(int argc, char** argv)
 {
     SDL_Window* window = NULL;
-    SDL_Surface* screenSurface = NULL;
+    SDL_Surface* surface = NULL;
 
-    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
     {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
     }
@@ -411,11 +470,14 @@ int main(int argc, char** argv)
         }
         else
         {
-            screenSurface = SDL_GetWindowSurface(window);
-            SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
+            surface = SDL_GetWindowSurface(window);
+            SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0x00, 0x00, 0x00));
         }
     }
-    Uint32* pixels = (Uint32*) screenSurface -> pixels;
+
+    Uint32* pixels = (Uint32*) surface -> pixels;
+
+    SDL_Event event;
 
     initialize_chip8();
     load_game(argv[1]);
@@ -436,12 +498,17 @@ int main(int argc, char** argv)
                         {
                             if(gfx[y*SCREEN_WIDTH + x] == 1)
                             {
-                                pixels[(((y * SCALE_FACTOR) + i)*screenSurface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF);
+                                pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
+                            }
+                            else
+                            {
+                                pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
                             }
                         }
                     }
                 }
             }
+
             SDL_UpdateWindowSurface(window);
             drawflag = 0;            
         }
@@ -456,7 +523,34 @@ int main(int argc, char** argv)
             printf("BEEP!\n");
             sound_timer--;
         }
+
+        while(SDL_PollEvent(&event))
+        {
+            unsigned char hexkey;
+            switch(event.type)
+            {
+                case SDL_KEYUP:
+                    hexkey = keycode_to_hex(event.key.keysym.sym);
+                    if(hexkey != 0x42)
+                    {
+                        keys[hexkey] = 0;
+                    }
+                    break;
+                
+                case SDL_KEYDOWN:
+                    hexkey = keycode_to_hex(event.key.keysym.sym);
+                    if(hexkey != 0x42)
+                    {
+                        keys[hexkey] = 1;
+                    }
+                    break;
+            }
+        }
     }
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }
