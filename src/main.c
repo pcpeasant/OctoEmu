@@ -6,6 +6,8 @@
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
 
+#define SCALE_FACTOR 10
+
 unsigned short opcode;
 unsigned char memory[4096];
 unsigned char V[16];
@@ -39,7 +41,7 @@ unsigned char fontset[80] =
   0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
-void initialize()
+void initialize_chip8()
 {
     pc = 0x200;
     opcode = 0;
@@ -402,7 +404,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
         if(window == NULL)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -414,7 +416,8 @@ int main(int argc, char** argv)
         }
     }
     Uint32* pixels = (Uint32*) screenSurface -> pixels;
-    initialize();
+
+    initialize_chip8();
     load_game(argv[1]);
 
     while(1)
@@ -427,9 +430,15 @@ int main(int argc, char** argv)
             {
                 for(int x = 0; x < SCREEN_WIDTH; x++)
                 {
-                    if(gfx[y*SCREEN_WIDTH + x] == 1)
+                    for(int i = 0; i < SCALE_FACTOR; i++)
                     {
-                        pixels[(y*screenSurface->w) + x] = 0xFFFFFF;
+                        for(int j = 0; j < SCALE_FACTOR; j++)
+                        {
+                            if(gfx[y*SCREEN_WIDTH + x] == 1)
+                            {
+                                pixels[(((y * SCALE_FACTOR) + i)*screenSurface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF);
+                            }
+                        }
                     }
                 }
             }
