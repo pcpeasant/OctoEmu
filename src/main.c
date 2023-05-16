@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
 
 #define SCALE_FACTOR 10
 
-#define IPF 10
+#define IPF 100
 
 unsigned short opcode;
 unsigned char memory[4096];
