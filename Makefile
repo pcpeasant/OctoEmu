@@ -1,8 +1,19 @@
-SRC_DIR = src
-BUILD_DIR = build
+EXEC := Chippy
+SRC_DIR := ./src
+BUILD_DIR := ./build
 
-Chippy: main.o
-	cc $(BUILD_DIR)/main.o -o $(BUILD_DIR)/Chippy -lSDL2
+SRCS := $(shell find $(SRC_DIRS) -name '*.c')
+OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
-main.o: $(SRC_DIR)/main.c
-	cc -c $(SRC_DIR)/main.c -o $(BUILD_DIR)/main.o 
+LDFLAGS := -lSDL2
+
+$(BUILD_DIR)/$(EXEC): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/%.c.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) -c $< -o $@
+
+.PHONY: clean
+clean:
+	rm -r $(BUILD_DIR)
