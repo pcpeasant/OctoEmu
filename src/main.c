@@ -9,7 +9,7 @@
 
 #define SCALE_FACTOR 10
 
-#define IPF 100
+#define IPF 10
 
 unsigned short opcode;
 unsigned char memory[4096];
