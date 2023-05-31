@@ -361,6 +361,34 @@ void emulate_cycle()
     }
 }
 
+void update_surface(SDL_Surface* surface)
+{
+    Uint32* pixels = (Uint32*) surface -> pixels;
+    Uint32 pixel_on_val = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
+    Uint32 pixel_off_val = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
+
+    for(int y = 0; y < SCREEN_HEIGHT; y++)
+    {
+        for(int x = 0; x < SCREEN_WIDTH; x++)
+        {
+            for(int i = 0; i < SCALE_FACTOR; i++)
+            {
+                for(int j = 0; j < SCALE_FACTOR; j++)
+                {
+                    if(gfx[y*SCREEN_WIDTH + x] == 1)
+                    {
+                        pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = pixel_on_val;
+                    }
+                    else
+                    {
+                        pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = pixel_off_val;
+                    }
+                }
+            }
+        }
+    }
+}
+
 unsigned char keycode_to_hex(SDL_Keycode key)
 {
     switch (key)
@@ -421,8 +449,8 @@ unsigned char keycode_to_hex(SDL_Keycode key)
 
 int main(int argc, char** argv)
 {
-    SDL_Window* window = NULL;
-    SDL_Surface* surface = NULL;
+    SDL_Window* chippy_window = NULL;
+    SDL_Surface* chippy_surface = NULL;
 
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
     {
@@ -430,19 +458,17 @@ int main(int argc, char** argv)
     }
     else
     {
-        window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
-        if(window == NULL)
+        chippy_window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
+        if(chippy_window == NULL)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         }
         else
         {
-            surface = SDL_GetWindowSurface(window);
-            SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0x00, 0x00, 0x00));
+            chippy_surface = SDL_GetWindowSurface(chippy_window);
+            SDL_FillRect(chippy_surface, NULL, SDL_MapRGB(chippy_surface->format, 0x00, 0x00, 0x00));
         }
     }
-
-    Uint32* pixels = (Uint32*) surface -> pixels;
 
     SDL_Event event;
 
@@ -470,28 +496,8 @@ int main(int argc, char** argv)
 
             if(drawflag)
             {
-                for(int y = 0; y < SCREEN_HEIGHT; y++)
-                {
-                    for(int x = 0; x < SCREEN_WIDTH; x++)
-                    {
-                        for(int i = 0; i < SCALE_FACTOR; i++)
-                        {
-                            for(int j = 0; j < SCALE_FACTOR; j++)
-                            {
-                                if(gfx[y*SCREEN_WIDTH + x] == 1)
-                                {
-                                    pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
-                                }
-                                else
-                                {
-                                    pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                SDL_UpdateWindowSurface(window);
+                update_surface(chippy_surface);
+                SDL_UpdateWindowSurface(chippy_window);
                 drawflag = 0;            
             }
 
@@ -535,8 +541,8 @@ int main(int argc, char** argv)
         }
     }
 
-    SDL_FreeSurface(surface);
-    SDL_DestroyWindow(window);
+    SDL_FreeSurface(chippy_surface);
+    SDL_DestroyWindow(chippy_window);
     SDL_Quit();
 
     return 0;
