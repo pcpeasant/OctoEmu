@@ -405,14 +405,14 @@ bool initialize_SDL(SDL_Window** window, SDL_Surface** surface, Mix_Chunk** sfx)
     }
 
     *window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
-    if(window == NULL)
+    if(*window == NULL)
     {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         return false;
     }
 
     *sfx = Mix_LoadWAV("../res/beep.wav");
-    if(sfx == NULL)
+    if(*sfx == NULL)
     {
         printf("Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError());
         return false;
@@ -422,6 +422,15 @@ bool initialize_SDL(SDL_Window** window, SDL_Surface** surface, Mix_Chunk** sfx)
     SDL_FillRect(*surface, NULL, SDL_MapRGB((*surface)->format, 0x00, 0x00, 0x00));
 
     return true;
+}
+
+void exit_SDL(SDL_Window* window, SDL_Surface* surface, Mix_Chunk* sfx)
+{
+    Mix_FreeChunk(sfx);
+    SDL_FreeSurface(surface);
+    SDL_DestroyWindow(window);
+    Mix_Quit();
+    SDL_Quit();
 }
 
 unsigned char keycode_to_hex(SDL_Keycode key)
@@ -491,7 +500,9 @@ int main(int argc, char** argv)
 
     if(!initialize_SDL(&chippy_window, &chippy_surface, &sfx_beep))
     {
-        printf("There was an error initializing SDL.");
+        printf("There was an error initializing SDL.\n");
+        exit_SDL(chippy_window, chippy_surface, sfx_beep);
+        return 0;
     }
 
     initialize_chip8();
@@ -500,9 +511,9 @@ int main(int argc, char** argv)
     int64_t desired_frametime = SDL_GetPerformanceFrequency()/ (double) 60;
     int64_t prev_frame_time = SDL_GetPerformanceCounter();
     int64_t accumulator = 0;
-    int running = 1;
+    bool paused = false;
 
-    while(running)
+    while(true)
     {
         int64_t current_frame_time = SDL_GetPerformanceCounter();
         int64_t delta_time = current_frame_time - prev_frame_time;
@@ -511,27 +522,30 @@ int main(int argc, char** argv)
 
         while(accumulator >= desired_frametime)
         {
-            for(int i = 0; i<IPF; i++)
+            if(!paused)
             {
-                emulate_cycle();
-            }
+                for(int i = 0; i<IPF; i++)
+                {
+                    emulate_cycle();
+                }
 
-            if(drawflag)
-            {
-                update_surface(chippy_surface);
-                SDL_UpdateWindowSurface(chippy_window);
-                drawflag = 0;            
-            }
+                if(drawflag)
+                {
+                    update_surface(chippy_surface);
+                    SDL_UpdateWindowSurface(chippy_window);
+                    drawflag = 0;            
+                }
 
-            if(delay_timer > 0)
-            {
-                delay_timer--;
-            }
+                if(delay_timer > 0)
+                {
+                    delay_timer--;
+                }
 
-            if(sound_timer > 0)
-            {
-                Mix_PlayChannel(-1, sfx_beep, 0);
-                sound_timer--;
+                if(sound_timer > 0)
+                {
+                    Mix_PlayChannel(-1, sfx_beep, 0);
+                    sound_timer--;
+                }
             }
 
             while(SDL_PollEvent(&event))
@@ -548,6 +562,11 @@ int main(int argc, char** argv)
                         break;
                     
                     case SDL_KEYDOWN:
+                        if(event.key.keysym.sym== SDLK_SPACE)
+                        {
+                            paused = !paused;
+                            break;
+                        }
                         hexkey = keycode_to_hex(event.key.keysym.sym);
                         if(hexkey != 0x42)
                         {
@@ -556,18 +575,11 @@ int main(int argc, char** argv)
                         break;
                     
                     case SDL_QUIT:
-                        running = 0;
+                        exit_SDL(chippy_window, chippy_surface, sfx_beep);
+                        return 0;
                 }
             }
             accumulator -= desired_frametime;
         }
     }
-
-    Mix_FreeChunk(sfx_beep);
-    SDL_FreeSurface(chippy_surface);
-    SDL_DestroyWindow(chippy_window);
-    Mix_Quit();
-    SDL_Quit();
-
-    return 0;
 }
