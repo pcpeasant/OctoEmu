@@ -562,7 +562,7 @@ int main(int argc, char** argv)
                         break;
                     
                     case SDL_KEYDOWN:
-                        if(event.key.keysym.sym== SDLK_SPACE)
+                        if(event.key.keysym.sym == SDLK_SPACE)
                         {
                             paused = !paused;
                             break;
@@ -571,6 +571,17 @@ int main(int argc, char** argv)
                         if(hexkey != 0x42)
                         {
                             keys[hexkey] = 1;
+                        }
+                        break;
+                    
+                    case SDL_WINDOWEVENT:
+                        if(event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+                        {
+                            paused = true;
+                        }
+                        if(event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+                        {
+                            paused = false;
                         }
                         break;
                     
