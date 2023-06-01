@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -389,6 +390,40 @@ void update_surface(SDL_Surface* surface)
     }
 }
 
+bool initialize_SDL(SDL_Window** window, SDL_Surface** surface, Mix_Chunk** sfx)
+{
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0)
+    {
+        printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+    {
+        printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+        return false;
+    }
+
+    *window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
+    if(window == NULL)
+    {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        return false;
+    }
+
+    *sfx = Mix_LoadWAV("../res/beep.wav");
+    if(sfx == NULL)
+    {
+        printf("Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+        return false;
+    }
+
+    *surface = SDL_GetWindowSurface(*window);
+    SDL_FillRect(*surface, NULL, SDL_MapRGB((*surface)->format, 0x00, 0x00, 0x00));
+
+    return true;
+}
+
 unsigned char keycode_to_hex(SDL_Keycode key)
 {
     switch (key)
@@ -451,26 +486,13 @@ int main(int argc, char** argv)
 {
     SDL_Window* chippy_window = NULL;
     SDL_Surface* chippy_surface = NULL;
-
-    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
-    {
-        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-    }
-    else
-    {
-        chippy_window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
-        if(chippy_window == NULL)
-        {
-            printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        }
-        else
-        {
-            chippy_surface = SDL_GetWindowSurface(chippy_window);
-            SDL_FillRect(chippy_surface, NULL, SDL_MapRGB(chippy_surface->format, 0x00, 0x00, 0x00));
-        }
-    }
-
+    Mix_Chunk* sfx_beep = NULL;
     SDL_Event event;
+
+    if(!initialize_SDL(&chippy_window, &chippy_surface, &sfx_beep))
+    {
+        printf("There was an error initializing SDL.");
+    }
 
     initialize_chip8();
     load_game(argv[1]);
@@ -508,7 +530,7 @@ int main(int argc, char** argv)
 
             if(sound_timer > 0)
             {
-                printf("BEEP!\n");
+                Mix_PlayChannel(-1, sfx_beep, 0);
                 sound_timer--;
             }
 
@@ -541,8 +563,10 @@ int main(int argc, char** argv)
         }
     }
 
+    Mix_FreeChunk(sfx_beep);
     SDL_FreeSurface(chippy_surface);
     SDL_DestroyWindow(chippy_window);
+    Mix_Quit();
     SDL_Quit();
 
     return 0;

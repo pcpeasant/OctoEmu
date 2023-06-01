@@ -5,7 +5,7 @@ BUILD_DIR := ./build
 SRCS := $(shell find $(SRC_DIRS) -name '*.c')
 OBJS := $(BUILD_DIR)/$(SRCS:.c=.o)
 
-LDFLAGS := -lSDL2
+LDFLAGS := -lSDL2 -lSDL2_mixer
 
 $(BUILD_DIR)/$(EXEC): $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
