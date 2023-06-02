@@ -4,6 +4,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <stdbool.h>
 #include <string.h>
+#include <dirent.h>
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
@@ -68,10 +69,11 @@ void initialize_chip8()
     drawflag = 1;
 }
 
-void load_game(char* filename)
+void load_rom(char filename[])
 {
-    FILE* fptr = fopen(filename, "rb");
-
+    char temp[FILENAME_MAX+10] = "../roms/";
+    strcat(temp, filename);
+    FILE* fptr = fopen(temp, "rb");
     if(fptr == NULL)
     {
         printf("Could not open file.\n");
@@ -493,6 +495,39 @@ unsigned char keycode_to_hex(SDL_Keycode key)
 
 int main(int argc, char** argv)
 {
+    DIR *d;
+    struct dirent *dir;
+    int nfiles = 0;
+    d = opendir("../roms");
+    nfiles = 0;
+    if(d)
+    {
+        while((dir = readdir(d)) != NULL)
+        {
+            if(strcmp(dir->d_name, ".") && strcmp(dir->d_name, ".."))
+            {
+                printf("%d: %s\n", ++nfiles, dir->d_name);
+            }
+        }
+        rewinddir(d);
+    }
+
+    char filearray[nfiles][FILENAME_MAX];
+    int i = 0;
+    while((dir = readdir(d)) != NULL)
+    {
+        if(strcmp(dir->d_name, ".") && strcmp(dir->d_name, ".."))
+        {
+            strcpy(filearray[i++], dir->d_name);
+        }
+    }
+    closedir(d);
+
+    int choice;
+    printf("Enter the ROM number to load: \n");
+    scanf("%d", &choice);
+
+
     SDL_Window* chippy_window = NULL;
     SDL_Surface* chippy_surface = NULL;
     Mix_Chunk* sfx_beep = NULL;
@@ -506,7 +541,7 @@ int main(int argc, char** argv)
     }
 
     initialize_chip8();
-    load_game(argv[1]);
+    load_rom(filearray[choice-1]);
 
     int64_t desired_frametime = SDL_GetPerformanceFrequency()/ (double) 60;
     int64_t prev_frame_time = SDL_GetPerformanceCounter();
