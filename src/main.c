@@ -1,17 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_mixer.h>
-#include <stdbool.h>
 #include <string.h>
-#include <dirent.h>
+
+#include "raylib.h"
+#include "config.h"
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
-
-#define SCALE_FACTOR 10
-
-#define IPF 10
 
 unsigned short opcode;
 unsigned char memory[4096];
@@ -69,11 +64,9 @@ void initialize_chip8()
     drawflag = 1;
 }
 
-void load_rom(char filename[])
+void load_rom(char filepath[])
 {
-    char temp[FILENAME_MAX+10] = "../roms/";
-    strcat(temp, filename);
-    FILE* fptr = fopen(temp, "rb");
+    FILE* fptr = fopen(filepath, "rb");
     if(fptr == NULL)
     {
         printf("Could not open file.\n");
@@ -364,268 +357,99 @@ void emulate_cycle()
     }
 }
 
-void update_surface(SDL_Surface* surface)
+int main(int argc, char** argv)
 {
-    Uint32* pixels = (Uint32*) surface -> pixels;
-    Uint32 pixel_on_val = SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF);
-    Uint32 pixel_off_val = SDL_MapRGB(surface->format, 0x00, 0x00, 0x00);
-
-    for(int y = 0; y < SCREEN_HEIGHT; y++)
+    FilePathList romlist = LoadDirectoryFiles("./roms");
+    for(int i = 0; i<romlist.count; i++)
     {
-        for(int x = 0; x < SCREEN_WIDTH; x++)
+        printf("%d: %s\n", i+1, GetFileNameWithoutExt(romlist.paths[i]));
+    }
+
+    int choice;
+    printf("Enter the rom number to load: \n");
+    scanf("%d", &choice);
+
+    initialize_chip8();
+    load_rom(romlist.paths[choice-1]);
+    bool running = 1;
+    bool paused = 0;
+
+
+    UnloadDirectoryFiles(romlist);
+
+    InitWindow(SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, "Chippy");
+    InitAudioDevice();
+    SetTargetFPS(60);
+    Sound sfx_beep = LoadSound("./data/beep.wav");
+
+    int keypad[] = {KEY_X, KEY_ONE, KEY_TWO, KEY_THREE, KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_C, KEY_FOUR, KEY_R, KEY_F, KEY_V};
+
+    while(running)
+    {
+        BeginDrawing();
+        if(!paused)
         {
-            for(int i = 0; i < SCALE_FACTOR; i++)
+            for(int i = 0; i<IPF; i++)
             {
-                for(int j = 0; j < SCALE_FACTOR; j++)
+                emulate_cycle();
+            }
+
+            if(delay_timer > 0)
+            {
+                delay_timer--;
+            }
+
+            if(sound_timer > 0)
+            {
+                if(!IsSoundPlaying(sfx_beep))
+                {
+                    PlaySound(sfx_beep);
+                }
+                sound_timer--;
+            }
+        }
+
+        if(drawflag)
+        { 
+            ClearBackground(BLACK);
+
+            for(int y = 0; y < SCREEN_HEIGHT; y++)
+            {
+                for(int x = 0; x < SCREEN_WIDTH; x++)
                 {
                     if(gfx[y*SCREEN_WIDTH + x] == 1)
                     {
-                        pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = pixel_on_val;
-                    }
-                    else
-                    {
-                        pixels[(((y * SCALE_FACTOR) + i)*surface->w) + ((x * SCALE_FACTOR) + j)] = pixel_off_val;
+                        DrawRectangle(x*SCALE_FACTOR, y*SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR, WHITE);
                     }
                 }
             }
+            drawflag = 0;
         }
-    }
-}
-
-bool initialize_SDL(SDL_Window** window, SDL_Surface** surface, Mix_Chunk** sfx)
-{
-    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0)
-    {
-        printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
-        return false;
-    }
-
-    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
-    {
-        printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
-        return false;
-    }
-
-    *window = SDL_CreateWindow("Chippy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE_FACTOR, SCREEN_HEIGHT*SCALE_FACTOR, SDL_WINDOW_SHOWN);
-    if(*window == NULL)
-    {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        return false;
-    }
-
-    *sfx = Mix_LoadWAV("../res/beep.wav");
-    if(*sfx == NULL)
-    {
-        printf("Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError());
-        return false;
-    }
-
-    *surface = SDL_GetWindowSurface(*window);
-    SDL_FillRect(*surface, NULL, SDL_MapRGB((*surface)->format, 0x00, 0x00, 0x00));
-
-    return true;
-}
-
-void exit_SDL(SDL_Window* window, SDL_Surface* surface, Mix_Chunk* sfx)
-{
-    Mix_FreeChunk(sfx);
-    SDL_FreeSurface(surface);
-    SDL_DestroyWindow(window);
-    Mix_Quit();
-    SDL_Quit();
-}
-
-unsigned char keycode_to_hex(SDL_Keycode key)
-{
-    switch (key)
-    {
-    case SDLK_1:
-        return 0x01;
-        break;
-    case SDLK_2:
-        return 0x02;
-        break;
-    case SDLK_3:
-        return 0x03;
-        break;
-    case SDLK_4:
-        return 0x0C;
-        break;
-    case SDLK_q:
-        return 0x04;
-        break;
-    case SDLK_w:
-        return 0x05;
-        break;
-    case SDLK_e:
-        return 0x06;
-        break;
-    case SDLK_r:
-        return 0x0D;
-        break;
-    case SDLK_a:
-        return 0x07;
-        break;
-    case SDLK_s:
-        return 0x08;
-        break;
-    case SDLK_d:
-        return 0x09;
-        break;
-    case SDLK_f:
-        return 0x0E;
-        break;
-    case SDLK_z:
-        return 0x0A;
-        break;
-    case SDLK_x:
-        return 0x00;
-        break;
-    case SDLK_c:
-        return 0x0B;
-        break;
-    case SDLK_v:
-        return 0x0F;
-        break;
-    default:
-        return 0x42;
-        break;
-    }
-}
-
-int main(int argc, char** argv)
-{
-    DIR *d;
-    struct dirent *dir;
-    int nfiles = 0;
-    d = opendir("../roms");
-    nfiles = 0;
-    if(d)
-    {
-        while((dir = readdir(d)) != NULL)
+        
+        for(int i = 0; i<16; i++)
         {
-            if(strcmp(dir->d_name, ".") && strcmp(dir->d_name, ".."))
+            if(IsKeyPressed(keypad[i]))
             {
-                printf("%d: %s\n", ++nfiles, dir->d_name);
+                keys[i] = 1;
+            }
+            else if(IsKeyReleased(keypad[i]))
+            {
+                keys[i] = 0;
             }
         }
-        rewinddir(d);
-    }
 
-    char filearray[nfiles][FILENAME_MAX];
-    int i = 0;
-    while((dir = readdir(d)) != NULL)
-    {
-        if(strcmp(dir->d_name, ".") && strcmp(dir->d_name, ".."))
+        if(IsKeyPressed(KEY_SPACE))
         {
-            strcpy(filearray[i++], dir->d_name);
+            paused = !paused;
         }
-    }
-    closedir(d);
-
-    int choice;
-    printf("Enter the ROM number to load: \n");
-    scanf("%d", &choice);
-
-
-    SDL_Window* chippy_window = NULL;
-    SDL_Surface* chippy_surface = NULL;
-    Mix_Chunk* sfx_beep = NULL;
-    SDL_Event event;
-
-    if(!initialize_SDL(&chippy_window, &chippy_surface, &sfx_beep))
-    {
-        printf("There was an error initializing SDL.\n");
-        exit_SDL(chippy_window, chippy_surface, sfx_beep);
-        return 0;
-    }
-
-    initialize_chip8();
-    load_rom(filearray[choice-1]);
-
-    int64_t desired_frametime = SDL_GetPerformanceFrequency()/ (double) 60;
-    int64_t prev_frame_time = SDL_GetPerformanceCounter();
-    int64_t accumulator = 0;
-    bool paused = false;
-
-    while(true)
-    {
-        int64_t current_frame_time = SDL_GetPerformanceCounter();
-        int64_t delta_time = current_frame_time - prev_frame_time;
-        prev_frame_time = current_frame_time;
-        accumulator += delta_time;    
-
-        while(accumulator >= desired_frametime)
+        if(WindowShouldClose())
         {
-            if(!paused)
-            {
-                for(int i = 0; i<IPF; i++)
-                {
-                    emulate_cycle();
-                }
-
-                if(drawflag)
-                {
-                    update_surface(chippy_surface);
-                    SDL_UpdateWindowSurface(chippy_window);
-                    drawflag = 0;            
-                }
-
-                if(delay_timer > 0)
-                {
-                    delay_timer--;
-                }
-
-                if(sound_timer > 0)
-                {
-                    Mix_PlayChannel(-1, sfx_beep, 0);
-                    sound_timer--;
-                }
-            }
-
-            while(SDL_PollEvent(&event))
-            {
-                unsigned char hexkey;
-                switch(event.type)
-                {
-                    case SDL_KEYUP:
-                        hexkey = keycode_to_hex(event.key.keysym.sym);
-                        if(hexkey != 0x42)
-                        {
-                            keys[hexkey] = 0;
-                        }
-                        break;
-                    
-                    case SDL_KEYDOWN:
-                        if(event.key.keysym.sym == SDLK_SPACE)
-                        {
-                            paused = !paused;
-                            break;
-                        }
-                        hexkey = keycode_to_hex(event.key.keysym.sym);
-                        if(hexkey != 0x42)
-                        {
-                            keys[hexkey] = 1;
-                        }
-                        break;
-                    
-                    case SDL_WINDOWEVENT:
-                        if(event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
-                        {
-                            paused = true;
-                        }
-                        if(event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
-                        {
-                            paused = false;
-                        }
-                        break;
-                    
-                    case SDL_QUIT:
-                        exit_SDL(chippy_window, chippy_surface, sfx_beep);
-                        return 0;
-                }
-            }
-            accumulator -= desired_frametime;
+            running = 0;
         }
+        EndDrawing();
     }
+    
+    UnloadSound(sfx_beep);
+    CloseWindow();
+    CloseAudioDevice();
 }
