@@ -371,8 +371,8 @@ int main(int argc, char** argv)
 
     initialize_chip8();
     load_rom(romlist.paths[choice-1]);
-    bool running = 1;
-    bool paused = 0;
+    int running = 1;
+    int paused = 0;
 
 
     UnloadDirectoryFiles(romlist);
