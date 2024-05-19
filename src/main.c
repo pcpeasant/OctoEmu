@@ -358,7 +358,7 @@ void emulate_cycle()
 
 int main(int argc, char **argv)
 {
-    FilePathList romlist = LoadDirectoryFiles("./roms");
+    FilePathList romlist = LoadDirectoryFiles("../roms");
     for (int i = 0; i < romlist.count; i++)
     {
         printf("%d: %s\n", i + 1, GetFileNameWithoutExt(romlist.paths[i]));
@@ -370,7 +370,6 @@ int main(int argc, char **argv)
 
     initialize_chip8();
     load_rom(romlist.paths[choice - 1]);
-    int running = 1;
     int paused = 0;
 
     UnloadDirectoryFiles(romlist);
@@ -378,13 +377,25 @@ int main(int argc, char **argv)
     InitWindow(SCREEN_WIDTH * SCALE_FACTOR, SCREEN_HEIGHT * SCALE_FACTOR, "Chippy");
     InitAudioDevice();
     SetTargetFPS(60);
-    Sound sfx_beep = LoadSound("./data/beep.wav");
+    Sound sfx_beep = LoadSound("../data/beep.wav");
 
     int keypad[] = {KEY_X, KEY_ONE, KEY_TWO, KEY_THREE, KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_C, KEY_FOUR, KEY_R, KEY_F, KEY_V};
 
-    while (running)
+    while (!WindowShouldClose())
     {
-        BeginDrawing();
+
+        for (int i = 0; i < 16; i++)
+        {
+            if (IsKeyPressed(keypad[i]))
+            {
+                keys[i] = 1;
+            }
+            else if (IsKeyReleased(keypad[i]))
+            {
+                keys[i] = 0;
+            }
+        }
+
         if (!paused)
         {
             for (int i = 0; i < IPF; i++)
@@ -407,44 +418,24 @@ int main(int argc, char **argv)
             }
         }
 
-        if (drawflag)
+        BeginDrawing();
+        ClearBackground(BLACK);
+        for (int y = 0; y < SCREEN_HEIGHT; y++)
         {
-            ClearBackground(BLACK);
-
-            for (int y = 0; y < SCREEN_HEIGHT; y++)
+            for (int x = 0; x < SCREEN_WIDTH; x++)
             {
-                for (int x = 0; x < SCREEN_WIDTH; x++)
+                if (gfx[y * SCREEN_WIDTH + x] == 1)
                 {
-                    if (gfx[y * SCREEN_WIDTH + x] == 1)
-                    {
-                        DrawRectangle(x * SCALE_FACTOR, y * SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR, WHITE);
-                    }
+                    DrawRectangle(x * SCALE_FACTOR, y * SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR, WHITE);
                 }
             }
-            drawflag = 0;
         }
-
-        for (int i = 0; i < 16; i++)
-        {
-            if (IsKeyPressed(keypad[i]))
-            {
-                keys[i] = 1;
-            }
-            else if (IsKeyReleased(keypad[i]))
-            {
-                keys[i] = 0;
-            }
-        }
+        EndDrawing();
 
         if (IsKeyPressed(KEY_SPACE))
         {
             paused = !paused;
         }
-        if (WindowShouldClose())
-        {
-            running = 0;
-        }
-        EndDrawing();
     }
 
     UnloadSound(sfx_beep);
