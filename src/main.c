@@ -5,6 +5,7 @@
 #include "raylib.h"
 #include "config.h"
 #include "core.h"
+#include "embed.c"
 
 int main()
 {
@@ -17,8 +18,8 @@ int main()
     InitWindow(SCREEN_WIDTH * SCALE_FACTOR, SCREEN_HEIGHT * SCALE_FACTOR, "Chippy");
     InitAudioDevice();
     SetTargetFPS(60);
-    Sound sfx_beep = LoadSound("../data/beep.wav");
-    char fileloadmessage[] = "Drag and drop a ROM into the window.";
+    Wave beep_wave = LoadWaveFromMemory(".wav", beep_wav_data, beep_wav_data_size);
+    Sound sfx_beep = LoadSoundFromWave(beep_wave);
 
     int keypad[] = {KEY_X, KEY_ONE, KEY_TWO, KEY_THREE, KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_C, KEY_FOUR, KEY_R, KEY_F, KEY_V};
 
@@ -88,7 +89,7 @@ int main()
         }
         else
         {
-            DrawText(fileloadmessage, 0, 0, 24, WHITE);
+            DrawText("Drag and drop a ROM into the window.", 0, 0, 24, WHITE);
         }
         EndDrawing();
 
