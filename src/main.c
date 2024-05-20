@@ -8,33 +8,35 @@
 
 int main()
 {
-    FilePathList romlist = LoadDirectoryFiles("../roms");
-    for (unsigned int i = 0; i < romlist.count; i++)
-    {
-        printf("%d: %s\n", i + 1, GetFileNameWithoutExt(romlist.paths[i]));
-    }
-
-    int choice;
-    printf("Enter the rom number to load: \n");
-    scanf("%d", &choice);
-
     Chip8core *emulator_core = (Chip8core *)malloc(sizeof(Chip8core));
 
     initialize_chip8(emulator_core);
-    load_rom_chip8(romlist.paths[choice - 1], emulator_core);
-    int paused = 0;
-
-    UnloadDirectoryFiles(romlist);
+    int paused = 1;
+    int rom_loaded = 0;
 
     InitWindow(SCREEN_WIDTH * SCALE_FACTOR, SCREEN_HEIGHT * SCALE_FACTOR, "Chippy");
     InitAudioDevice();
     SetTargetFPS(60);
     Sound sfx_beep = LoadSound("../data/beep.wav");
+    char fileloadmessage[] = "Drag and drop a ROM into the window.";
 
     int keypad[] = {KEY_X, KEY_ONE, KEY_TWO, KEY_THREE, KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_C, KEY_FOUR, KEY_R, KEY_F, KEY_V};
 
     while (!WindowShouldClose())
     {
+        if (IsFileDropped())
+        {
+            FilePathList droppedFiles = LoadDroppedFiles();
+
+            if ((droppedFiles.count > 0) && (IsFileExtension(droppedFiles.paths[0], ".ch8") || IsFileExtension(droppedFiles.paths[0], ".rom")))
+            {
+                load_rom_chip8(droppedFiles.paths[0], emulator_core);
+                rom_loaded = 1;
+                paused = 0;
+            }
+            UnloadDroppedFiles(droppedFiles);
+        }
+
         if (!paused)
         {
             for (int i = 0; i < 16; i++)
@@ -71,15 +73,22 @@ int main()
 
         BeginDrawing();
         ClearBackground(BLACK);
-        for (int y = 0; y < SCREEN_HEIGHT; y++)
+        if (rom_loaded)
         {
-            for (int x = 0; x < SCREEN_WIDTH; x++)
+            for (int y = 0; y < SCREEN_HEIGHT; y++)
             {
-                if (emulator_core->gfx[y * SCREEN_WIDTH + x] == 1)
+                for (int x = 0; x < SCREEN_WIDTH; x++)
                 {
-                    DrawRectangle(x * SCALE_FACTOR, y * SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR, WHITE);
+                    if (emulator_core->gfx[y * SCREEN_WIDTH + x] == 1)
+                    {
+                        DrawRectangle(x * SCALE_FACTOR, y * SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR, WHITE);
+                    }
                 }
             }
+        }
+        else
+        {
+            DrawText(fileloadmessage, 0, 0, 24, WHITE);
         }
         EndDrawing();
 
