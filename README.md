@@ -16,6 +16,8 @@ Keyboard    Chip-8
 Q W E R  -> 4 5 6 D
 A S D F     7 8 9 E
 Z X C V     A 0 B F
+
+Press Spacebar to pause/unpause.
 ```
 
 Run the Chippy executable, drag and drop a ROM file onto the window to get started!  
