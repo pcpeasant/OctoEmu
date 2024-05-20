@@ -4,7 +4,7 @@
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
 
-struct Chip8core
+struct Chip8Core
 {
     unsigned short opcode;
     unsigned char memory[4096];
@@ -20,10 +20,10 @@ struct Chip8core
     unsigned int drawflag;
 };
 
-typedef struct Chip8core Chip8core;
+typedef struct Chip8Core Chip8Core;
 
-void initialize_chip8(Chip8core *core);
-void load_rom_chip8(char filepath[], Chip8core *core);
-void run_cycle_chip8(Chip8core *core);
+void initialize_chip8(Chip8Core *core);
+void load_rom_chip8(char filepath[], Chip8Core *core);
+void run_cycle_chip8(Chip8Core *core);
 
 #endif

@@ -9,7 +9,7 @@
 
 int main()
 {
-    Chip8core *emulator_core = (Chip8core *)malloc(sizeof(Chip8core));
+    Chip8Core *emulator_core = (Chip8Core *)malloc(sizeof(Chip8Core));
 
     initialize_chip8(emulator_core);
     int paused = 1;
@@ -18,8 +18,7 @@ int main()
     InitWindow(SCREEN_WIDTH * SCALE_FACTOR, SCREEN_HEIGHT * SCALE_FACTOR, "Chippy");
     InitAudioDevice();
     SetTargetFPS(60);
-    Wave beep_wave = LoadWaveFromMemory(".mp3", beep_mp3_data, beep_mp3_data_size);
-    Sound sfx_beep = LoadSoundFromWave(beep_wave);
+    Sound sfx_beep = LoadSoundFromWave(LoadWaveFromMemory(".mp3", beep_mp3_data, beep_mp3_data_size));
 
     int keypad[] = {KEY_X, KEY_ONE, KEY_TWO, KEY_THREE, KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_C, KEY_FOUR, KEY_R, KEY_F, KEY_V};
 

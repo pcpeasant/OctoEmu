@@ -4,7 +4,7 @@
 
 #include "core.h"
 
-void initialize_chip8(Chip8core *core)
+void initialize_chip8(Chip8Core *core)
 {
 
     unsigned char fontset[80] =
@@ -48,7 +48,7 @@ void initialize_chip8(Chip8core *core)
     core->drawflag = 1;
 }
 
-void load_rom_chip8(char filepath[], Chip8core *core)
+void load_rom_chip8(char filepath[], Chip8Core *core)
 {
     FILE *fptr = fopen(filepath, "rb");
     if (fptr == NULL)
@@ -73,7 +73,7 @@ void load_rom_chip8(char filepath[], Chip8core *core)
     fclose(fptr);
 }
 
-void run_cycle_chip8(Chip8core *core)
+void run_cycle_chip8(Chip8Core *core)
 {
     unsigned short opcode = core->memory[core->pc] << 8 | core->memory[core->pc + 1];
     core->pc += 2;
